@@ -1,0 +1,2 @@
+# diplom
+kek lol orbidol
