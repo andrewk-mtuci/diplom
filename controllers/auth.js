@@ -1,14 +1,7 @@
-const mysql = require("mysql");
+const connect = require('../database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { promisify } = require('util');
-
-const db = mysql.createConnection({
-  host: process.env.DATABASE_HOST,
-  user: process.env.DATABASE_USER,
-  password: process.env.DATABASE_PASSWORD,
-  database: process.env.DATABASE
-})
 
 exports.login = async (req,res) => {
   try {
@@ -19,9 +12,8 @@ exports.login = async (req,res) => {
         message: 'Please provide an email and password'
       })
     }
-
-    db.query('SELECT * FROM users WHERE email = ?', [email], async (error, results) => {
-
+    connect.query('SELECT * FROM users WHERE email = ?', [email], async (error, results) => {
+      console.log(results);
       if (!results || !(await bcrypt.compare(password, results[0].password))) {
         res.status(401).render('login', {
           message: 'Email or Password is incorrect'
@@ -42,7 +34,7 @@ exports.login = async (req,res) => {
         httpOnly: true
       }
 
-      res.cookie('jwt', token, cookieOption );
+      res.cookie('jwt', token, cookieOption);
       res.status(200).redirect("/profile");
      }
 
@@ -56,9 +48,9 @@ exports.login = async (req,res) => {
 exports.register = (req, res) => {
   console.log(req.body);
 
-  const { username, email, password, passwordConfirm } = req.body;
+  const { username, email, status, password, passwordConfirm } = req.body;
 
-  db.query('SELECT email FROM users WHERE email = ?', [email], async (error, results) => {
+  connect.query('SELECT email FROM users WHERE email = ?', [email], async (error, results) => {
     console.log(results)
     if(error) {
       console.log(error);
@@ -77,16 +69,16 @@ exports.register = (req, res) => {
     let hashedPassword = await bcrypt.hash(password, 8);
     console.log(hashedPassword);
 
-    db.query('INSERT INTO users SET ?', {username: username, email:email, password: hashedPassword }, (error, result) => {
+    connect.query('INSERT INTO users SET ?', {username: username, email:email, status: status, password: hashedPassword }, (error, result) => {
       if(error) {
         console.log(error);
       } else {
+        console.log(results);
         return res.render('register', {
           message: 'User registered'
         });
       }
     })
-
   });
 }
 
@@ -102,9 +94,8 @@ exports.isLoggedIn = async (req, res, next) => {
       console.log(decoded);
 
       //2) Check if the user still exists
-      db.query('SELECT * FROM users WHERE id = ?', [decoded.id], (error, result) => {
+      connect.query('SELECT * FROM users WHERE user_id = ?', [decoded.id], (error, result) => {
         console.log(result);
-
         if(!result) {
           return next();
         }
@@ -129,6 +120,5 @@ exports.logout = async (req, res) => {
     expires: new Date(Date.now() + 2 * 1000),
     httpOnly: true
   });
-
   res.status(200).redirect('/');
 }
